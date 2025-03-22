@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-contract GameItem is ERC721URIStorage {
+contract SecureEstate is ERC721URIStorage {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
     constructor() ERC721("GameItem", "ITM") {}
@@ -78,7 +78,7 @@ contract GameItem is ERC721URIStorage {
     string memory pay_hash_hex = bytes32ToHexString(pay_ver_hash);
 
     //generate URI
-    string memory uri = string(abi.encodePacked("https://Store_Scontracts.com/contractHash=", cont_hash_hex,"&paymentHash=", pay_hash_hex));
+    string memory uri = string(abi.encodePacked("https://SecureEstate.com/contractHash=", cont_hash_hex,"&paymentHash=", pay_hash_hex));
     return uri;
     }
 
