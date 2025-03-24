@@ -8,9 +8,9 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 contract SecureEstate is ERC721URIStorage {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
-    constructor() ERC721("GameItem", "ITM") {}
+    constructor() ERC721("SecureEstate", "SETT") {}
 
-    bool status_contract = false; // (OpenAI, 2023)
+    bool status_contract = false;
     bool status_payment = false;
 
     // 1. Hash Verification Process:
@@ -52,7 +52,7 @@ contract SecureEstate is ERC721URIStorage {
     //seller verifies the hashes match and manually aknowledges the receipt of payment:
     function verify_hashPayment (bytes32 pay_hashB, bytes32 pay_hashS, string memory aknowledegement_of_payment) public pure returns(bool, bytes32){
         if (pay_hashB == pay_hashS && keccak256(abi.encodePacked(aknowledegement_of_payment)) == keccak256(abi.encodePacked("Payment Received"))) {
-            bytes32 combined_hash = keccak256(abi.encodePacked(pay_hashS, pay_hashB, aknowledegement_of_payment)); // (OpenAI, 2023)
+            bytes32 combined_hash = keccak256(abi.encodePacked(pay_hashS, pay_hashB, aknowledegement_of_payment));
             return (true, combined_hash);
         } else {
             return (false, bytes32(0));
@@ -95,15 +95,16 @@ contract SecureEstate is ERC721URIStorage {
     return uri;
     }
 
+    // contract_ver_Hash will have to be provided by the buyer
+    // payment_ver_Hash will have to be provided by the seller
     
     //generate the NFT only if the hashes are verified:
     //the NFT function will be on the seller side, but the seller will only be able to provide the payment hash.
-    function awardItem(address buyer_wallet_address, bytes32 cont_ver_hash, bytes32 pay_ver_hash, 
-    string memory aknowledegement_of_payment) public returns (uint){
+    function awardItem(address buyer_wallet_address, bytes32 cont_ver_hash, bytes32 pay_ver_hash) public returns (uint){
+        
         ///
-        require(verify_hashCont(cont_ver_hash, cont_ver_hash), "Contract hash not verified");
-        (bool hash_pay_ver, ) = verify_hashPayment(pay_ver_hash, pay_ver_hash, aknowledegement_of_payment);
-        require(hash_pay_ver, "Payment hash not verified");
+        require(status_contract, "Contract hash not verified");
+        require(status_payment , "Payment hash not verified");
         /// (ChatGPT, 2023)
         
         //generate the URI if true
@@ -118,5 +119,5 @@ contract SecureEstate is ERC721URIStorage {
 
         //token ID of the new NFT
         return newItemId;
-        } //(OpenAI, 2023)
+        }
 }
