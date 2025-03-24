@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Secure Estate</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.3.0/dist/web3.min.js"></script>
+</head>
+<body>
+    <h1>Secure Estate</h1>
+	<p>Seller Side:</p>
+    <button id="connectButton">Connect to MetaMask</button><br>
+        <!-- Seller contract details -->
+        <br><div id="cont_seller" style="display:none">
+			<label for="contract_seller">Seller Side:</label><br> 
+			<input type="text" id="contract_seller" placeholder="Contract Details">
+			<button onclick="hash_seller()">Generate Seller Contract Hash</button>
+			<p id="seller_cont_hash"></p>
+        </div>
+        
+        <!-- Buyer contract details -->
+        <div id="cont_buyer" style="display:none">
+			<label for="contract_buyer">Buyer Side:</label><br>
+			<input type="text" id="contract_buyer" placeholder="Contract Details">
+            <button onclick="hash_buyer()">Generate Buyer Contract Hash</button>
+			<p id="buyer_cont_hash"></p>
+        </div>
+        
+        <!-- Verify contract hashes -->
+        <div id="check_contracthashes" style="display:none">
+			<p><strong>Contract Details Verification</strong></p>
+			<label for="buyer_hash">Buyer Side:</label><br>
+            <input type="text" id="buyer_hash" placeholder="Buyer Contract Hash">
+			<br>
+
+			<br><label for="seller_hash">Seller Side:</label><br>
+            <input type="text" id="seller_hash" placeholder="Seller Contract Hash">
+			<br>
+
+			<p>Buyer Side:</p>
+            <button onclick="verify_hashCont()">Check Contract Hashes Match</button>
+			<p id="true_false"></p>
+        </div>
+
+
+        <!-- Buyer Payment details -->
+        <div id="hash_paymentB" style="display:none">
+			<label for="name_on_cardB">Buyer Side (Provide the details as seen on the bank transaction):</label><br>
+            <input type="text" id="name_on_cardB" placeholder="Name on Buyer's Card">
+            <input type="number" id="amount" placeholder="Amount Paid">
+            <button onclick="hash_paymentB()">Generate Buyer Payment Details Hash</button>
+			<p id="hash_pay_buyer"></p>
+        </div>
+        
+        <!-- Seller payment details -->
+        <div id="hash_paymentS" style="display:none">
+			<label for="name_on_cardS">Seller Side (Provide the details as seen on the bank transaction):</label><br>
+            <input type="text" id="name_on_cardS" placeholder="Name on Buyer's Card">
+            <input type="number" id="amount" placeholder="Amount Received">
+            <button onclick="hash_paymentS()">Generate Seller Payment Details Hash</button>
+			<p id="hash_pay_seller"></p>
+        </div>
+
+        <!-- Verify payment hashes -->
+        <div id="check_paymenthashes" style="display:none">
+			<p><strong>Payment Details Verification</strong></p>
+			<label for="pay_hashB">Buyer Side:</label><br>
+            <input type="text" id="pay_hashB" placeholder="Buyer Payment Hash">
+			<br>
+
+			<br><label for="pay_hashS">Seller Side:</label><br>
+            <input type="text" id="pay_hashS" placeholder="Seller Payment Hash">
+			<br>
+
+			<br><label for="aknowledegement_of_payment">Seller to write "Payment Received" as acknowledgement of payment from buyer:</label><br>
+            <input type="text" id="aknowledegement_of_payment" placeholder="Acknowledegement of Payment">
+            <button onclick="verify_hashPayment()">Check Payment Hashes Match</button>
+			<p id="true_false_pay"></p>
+        </div>
+
+        <!-- Generate NFT -->
+        <div id="generate_NFT" style="display:none">
+			<p><strong>Generate NFT</strong></p>
+			<label for="buyer_wallet">Buyer Side (Provide the wallet address you want the NFT to be generated to and the hash given in Contract Details Verification):</label><br>
+            <input type="text" id="buyer_wallet" placeholder="Buyer Wallet's Address">
+            <input type="test" id="cont_ver_hash" placeholder="Contract Hash Buyer">
+			<br>
+
+			<br><label for="pay_ver_hash">Seller Side (Provide the hash given in Payment Details verification):</label><br>
+            <input type="text" id="pay_ver_hash" placeholder="Payment Hash Seller">
+            <button onclick="awardItem()">Generate NFT</button>
+			<br>Buyer Side:<br>
+			<p id="generatedNFT"></p>
+        </div>
+    <script>
+
+		//Establish Connection with MetaMask to be able to change smart contract variable states.
+		//This would only appear on the Seller's interface
+        let web3;
+        let myContract;
+        const contractABI = [
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "approve",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "buyer_hash",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "seller_hash",
+				"type": "bytes32"
+			}
+		],
+		"name": "assignC",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "pay_hashB",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "pay_hashS",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "string",
+				"name": "aknowledegement_of_payment",
+				"type": "string"
+			}
+		],
+		"name": "assignP",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "buyer_wallet_address",
+				"type": "address"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "cont_ver_hash",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "pay_ver_hash",
+				"type": "bytes32"
+			}
+		],
+		"name": "awardItem",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "sender",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			}
+		],
+		"name": "ERC721IncorrectOwner",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "operator",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "ERC721InsufficientApproval",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "approver",
+				"type": "address"
+			}
+		],
+		"name": "ERC721InvalidApprover",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "operator",
+				"type": "address"
+			}
+		],
+		"name": "ERC721InvalidOperator",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			}
+		],
+		"name": "ERC721InvalidOwner",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "receiver",
+				"type": "address"
+			}
+		],
+		"name": "ERC721InvalidReceiver",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "sender",
+				"type": "address"
+			}
+		],
+		"name": "ERC721InvalidSender",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "ERC721NonexistentToken",
+		"type": "error"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "approved",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "Approval",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "operator",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "bool",
+				"name": "approved",
+				"type": "bool"
+			}
+		],
+		"name": "ApprovalForAll",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "_fromTokenId",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "_toTokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "BatchMetadataUpdate",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "_tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "MetadataUpdate",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "from",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "safeTransferFrom",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "from",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bytes",
+				"name": "data",
+				"type": "bytes"
+			}
+		],
+		"name": "safeTransferFrom",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "operator",
+				"type": "address"
+			},
+			{
+				"internalType": "bool",
+				"name": "approved",
+				"type": "bool"
+			}
+		],
+		"name": "setApprovalForAll",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "from",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "Transfer",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "from",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "transferFrom",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			}
+		],
+		"name": "balanceOf",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "data",
+				"type": "bytes32"
+			}
+		],
+		"name": "bytes32ToHexString",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "cont_ver_hash",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "pay_ver_hash",
+				"type": "bytes32"
+			}
+		],
+		"name": "generateURI",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "getApproved",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "contract_details",
+				"type": "string"
+			}
+		],
+		"name": "hash_buyer",
+		"outputs": [
+			{
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "name_on_card",
+				"type": "string"
+			},
+			{
+				"internalType": "int256",
+				"name": "amount",
+				"type": "int256"
+			}
+		],
+		"name": "hash_paymentB",
+		"outputs": [
+			{
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "name_on_card",
+				"type": "string"
+			},
+			{
+				"internalType": "int256",
+				"name": "amount",
+				"type": "int256"
+			}
+		],
+		"name": "hash_paymentS",
+		"outputs": [
+			{
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "contract_details",
+				"type": "string"
+			}
+		],
+		"name": "hash_seller",
+		"outputs": [
+			{
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "operator",
+				"type": "address"
+			}
+		],
+		"name": "isApprovedForAll",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "name",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "ownerOf",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes4",
+				"name": "interfaceId",
+				"type": "bytes4"
+			}
+		],
+		"name": "supportsInterface",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "symbol",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "tokenURI",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "buyer_hash",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "seller_hash",
+				"type": "bytes32"
+			}
+		],
+		"name": "verify_hashCont",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "pay_hashB",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "pay_hashS",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "string",
+				"name": "aknowledegement_of_payment",
+				"type": "string"
+			}
+		],
+		"name": "verify_hashPayment",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	}
+]	
+        const contractAddress = '0x21d092bd658caa722e380ac5a3538cd03063084c';
+
+        window.addEventListener('load', async () => {
+            if (typeof window.ethereum !== 'undefined') {
+                web3 = new Web3(window.ethereum);
+                myContract = new web3.eth.Contract(contractABI, contractAddress);
+            } else {
+                alert('MetaMask is not installed.');
+            } //(OpenAI, 2023)
+
+            document.getElementById('connectButton').addEventListener('click', async () => {
+                try {
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    document.getElementById('cont_seller').style.display = 'block';
+                } catch (error) {
+                    console.error('Could not connect to MetaMask:', error);
+                } //(OpenAI, 2023)
+            });
+        });
+
+
+        ///
+        // 1. Hash Seller Contract Details - Seller Side
+
+        async function hash_seller() {
+			const contract_details = document.getElementById('contract_seller').value;
+			try{
+				const hash = await myContract.methods.hash_seller(contract_details).call();
+				document.getElementById('seller_cont_hash').innerText = "Seller Contract Hash: " + hash
+				document.getElementById('cont_buyer').style.display = 'block';
+			} catch (error) {
+				console.error('Error hashing seller contract:', error);
+				alert('Error hashing buyer contract. Please contact this number: 01000000000 or send an email at secureestate@...')
+			}	
+		} //(OpenAI, 2023)
+
+        // 2. Hash Buyer Contract Details - Buyer Side
+        async function hash_buyer() {
+            const contract_details = document.getElementById('contract_buyer').value;
+            try {
+                const hash = await myContract.methods.hash_buyer(contract_details).call();
+				document.getElementById('buyer_cont_hash').innerText = "Buyer Contract Hash: " + hash
+                document.getElementById('check_contracthashes').style.display = 'block';
+            } catch (error) {
+                console.error('Error hashing buyer contract:', error);
+                alert('Error hashing buyer contract. Please check contract details and contact the seller.');
+            }
+        }
+
+        // 3. Verify if Contract Hashes Match - First Field and the button on Buyer Side, Second Field Seller Side
+        async function verify_hashCont() {
+            const buyer_hash = document.getElementById('buyer_hash').value;
+            const seller_hash = document.getElementById('seller_hash').value;
+            try {
+				const accounts = await web3.eth.getAccounts();
+            	const account = accounts[0];
+				await myContract.methods.assignC(buyer_hash, seller_hash).send({ from: account }); //(OpenAI, 2023)
+                const result = await myContract.methods.verify_hashCont(buyer_hash, seller_hash).call();
+                if (result === true) { //(OpenAI, 2023)
+                    document.getElementById('true_false').innerText = "Contract hashes are identical. Please input this hash into the right field when generating the NFT: " + buyer_hash
+                    document.getElementById('hash_paymentB').style.display = 'block';
+                } else {
+                    alert('Contract hashes do not match');
+                }
+				} catch (error) {
+					console.error('Error verifying contract hashes:', error);
+					alert('Error verifying contract hashes.');
+				}
+			}
+
+        // 4. Hash Payment (Buyer) - buyer side
+        async function hash_paymentB() {
+            const name_on_card = document.getElementById('name_on_cardB').value;
+            const amount = document.getElementById('amount').value;
+			try{
+				const hash = await myContract.methods.hash_paymentB(name_on_card, amount).call();
+				document.getElementById('hash_pay_buyer').innerText = "Buyer Payment Hash: " + hash
+            	document.getElementById('hash_paymentS').style.display = 'block';
+			} catch (error) {
+				console.error('Error hashing buyer payment:', error);
+                alert('Error hashing buyer payment.');
+			}
+            
+        }
+
+        // 5. Hash Payment (Seller) - seller side 
+        async function hash_paymentS() {
+            const name_on_card = document.getElementById('name_on_cardS').value;
+            const amount = document.getElementById('amount').value;
+			try{
+				const hash = await myContract.methods.hash_paymentB(name_on_card, amount).call();
+				document.getElementById('hash_pay_seller').innerText = "Seller Payment Hash: " + hash
+            	document.getElementById('check_paymenthashes').style.display = 'block';
+			} catch (error) {
+				console.error('Error hashing payment from buyer:', error);
+                alert('Error hashing payment from buyer.');
+			}
+            
+        }
+
+        // 6. Verify if Payment Hashes Match - first field on the Buyer side, second, third and button on the seller side
+        async function verify_hashPayment() {
+            const pay_hashB = document.getElementById('pay_hashB').value;
+            const pay_hashS = document.getElementById('pay_hashS').value;
+            const aknowPay = document.getElementById('aknowledegement_of_payment').value;
+            try {
+				const accounts = await web3.eth.getAccounts();
+            	const account = accounts[0];
+				await myContract.methods.assignP(pay_hashB, pay_hashS, aknowPay).send({ from: account }); //(OpenAI, 2023)
+                const result = await myContract.methods.verify_hashPayment(pay_hashB, pay_hashS, aknowPay).call(); //(ChatGPT, 2023)
+				const verify = result[0];
+				const combinedHash = result[1];
+                if (verify === true) {
+                    document.getElementById('true_false_pay').innerText = "Payment hashes are identical. Please input this hash into the right field when generating the NFT: " + combinedHash
+                    document.getElementById('generate_NFT').style.display = 'block';
+                } else {
+                    alert('Payment hashes do not match or payment not acknowledged.');
+                }
+            } catch (error) {
+                console.error('Error verifying payment hashes:', error);
+                alert('Error verifying payment hashes.');
+            }
+        }
+
+// 7. Generate NFT (Award Item) - First and second field on the buyer side, the third and button on seller side. The message with the token only to buyer side.
+        async function awardItem() {
+            const buyer_wallet = document.getElementById('buyer_wallet').value;
+            const cont_ver_hash = document.getElementById('cont_ver_hash').value;
+            const pay_ver_hash = document.getElementById('pay_ver_hash').value;
+
+            const accounts = await web3.eth.getAccounts();
+            const account = accounts[0];
+
+            try {
+				const receipt = await myContract.methods.awardItem(buyer_wallet, cont_ver_hash, pay_ver_hash).send({from: account}); //(OpenAI, 2023)
+				const tokenId = receipt.events.Transfer.returnValues.tokenId; //(OpenAI, 2023)
+                document.getElementById('generatedNFT').innerText = "Buyer Contract Hash and Seller Payment Hash are valid. The NFT has been generated: " + tokenId + ", to: " + buyer_wallet
+
+            } catch (error) {
+                console.error('NFT Minting failed: ', error);
+                alert('NFT Minting failed! Make sure you provided the correct contract and payment hashes as prompted.');
+            }
+        }
+		/// (OpenAI, 2023) used to give me a draft, I wrote 80% of the code.
+    </script>
+</body>
+</html>

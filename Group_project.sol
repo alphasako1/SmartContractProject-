@@ -5,11 +5,13 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-contract GameItem is ERC721URIStorage {
+contract SecureEstate is ERC721URIStorage {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
     constructor() ERC721("GameItem", "ITM") {}
 
+    bool status_contract = false; // (OpenAI, 2023)
+    bool status_payment = false;
 
     // 1. Hash Verification Process:
     //seller hashes the contract details:
@@ -31,6 +33,11 @@ contract GameItem is ERC721URIStorage {
         }
     }
 
+    //store the result
+    function assignC(bytes32 buyer_hash, bytes32 seller_hash) public {
+        status_contract = verify_hashCont(buyer_hash, seller_hash);
+    } //(OpenAI, 2023)
+
     // 2. Payment verification process:
     //buyer hash the payment details:
     function hash_paymentB (string memory name_on_card, int256 amount) public pure returns (bytes32){
@@ -45,12 +52,18 @@ contract GameItem is ERC721URIStorage {
     //seller verifies the hashes match and manually aknowledges the receipt of payment:
     function verify_hashPayment (bytes32 pay_hashB, bytes32 pay_hashS, string memory aknowledegement_of_payment) public pure returns(bool, bytes32){
         if (pay_hashB == pay_hashS && keccak256(abi.encodePacked(aknowledegement_of_payment)) == keccak256(abi.encodePacked("Payment Received"))) {
-            bytes32 combined_hash = keccak256(abi.encodePacked(pay_hashS, pay_hashB, aknowledegement_of_payment));
+            bytes32 combined_hash = keccak256(abi.encodePacked(pay_hashS, pay_hashB, aknowledegement_of_payment)); // (OpenAI, 2023)
             return (true, combined_hash);
         } else {
             return (false, bytes32(0));
         }
     }
+    
+    //store the result
+    function assignP(bytes32 pay_hashB, bytes32 pay_hashS, string memory aknowledegement_of_payment) public {
+        (bool Ver, ) = verify_hashPayment(pay_hashB, pay_hashS, aknowledegement_of_payment);
+        status_payment = Ver;
+    } //(OpenAI, 2023)
 
     // 3. Generate NFT
 
@@ -78,22 +91,18 @@ contract GameItem is ERC721URIStorage {
     string memory pay_hash_hex = bytes32ToHexString(pay_ver_hash);
 
     //generate URI
-    string memory uri = string(abi.encodePacked("https://Store_Scontracts.com/contractHash=", cont_hash_hex,"&paymentHash=", pay_hash_hex));
+    string memory uri = string(abi.encodePacked("https://SecureEstate.com/contractHash=", cont_hash_hex,"&paymentHash=", pay_hash_hex));
     return uri;
     }
 
-    // contract_ver_Hash will have to be provided by the buyer
-    // payment_ver_Hash will have to be provided by the seller
     
     //generate the NFT only if the hashes are verified:
     //the NFT function will be on the seller side, but the seller will only be able to provide the payment hash.
-    function awardItem(address buyer_wallet_address, bytes32 cont_ver_hash, bytes32 pay_ver_hash, 
-    string memory aknowledegement_of_payment) public returns (uint){
-        ///
-        require(verify_hashCont(cont_ver_hash, cont_ver_hash), "Contract hash not verified");
-        (bool hash_pay_ver, ) = verify_hashPayment(pay_ver_hash, pay_ver_hash, aknowledegement_of_payment);
-        require(hash_pay_ver, "Payment hash not verified");
-        /// (ChatGPT, 2023)
+    function awardItem(address buyer_wallet_address, bytes32 cont_ver_hash, bytes32 pay_ver_hash) public returns (uint){
+        
+        //check both state variables are true or false:
+        require(status_contract, "Contract hash not verified");
+        require(status_payment , "Payment hash not verified");
         
         //generate the URI if true
         string memory uri = generateURI(cont_ver_hash, pay_ver_hash);
@@ -107,5 +116,5 @@ contract GameItem is ERC721URIStorage {
 
         //token ID of the new NFT
         return newItemId;
-        }
+        } //(OpenAI, 2023)
 }
