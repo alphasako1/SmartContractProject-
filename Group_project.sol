@@ -98,11 +98,13 @@ contract SecureEstate is ERC721URIStorage {
     
     //generate the NFT only if the hashes are verified:
     //the NFT function will be on the seller side, but the seller will only be able to provide the payment hash.
-    function awardItem(address buyer_wallet_address, bytes32 cont_ver_hash, bytes32 pay_ver_hash) public returns (uint){
-        
-        //check both state variables are true or false:
-        require(status_contract, "Contract hash not verified");
-        require(status_payment , "Payment hash not verified");
+    function awardItem(address buyer_wallet_address, bytes32 cont_ver_hash, bytes32 pay_ver_hash, 
+    string memory aknowledegement_of_payment) public returns (uint){
+        ///
+        require(verify_hashCont(cont_ver_hash, cont_ver_hash), "Contract hash not verified");
+        (bool hash_pay_ver, ) = verify_hashPayment(pay_ver_hash, pay_ver_hash, aknowledegement_of_payment);
+        require(hash_pay_ver, "Payment hash not verified");
+        /// (ChatGPT, 2023)
         
         //generate the URI if true
         string memory uri = generateURI(cont_ver_hash, pay_ver_hash);
